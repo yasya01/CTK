@@ -548,6 +548,7 @@ void put_first_passwd(string nameIn)
                     }
                   
                 }
+            
                 else
                 {
                     temp << name << "," << password << "," << bl << "," << restr << endl;
@@ -592,7 +593,7 @@ void put_first_passwd(string nameIn)
                 if (name == nameIn)
                 {
 
-                    cout << "Put your password. Include kirilic and latin letter" << endl;
+                    cout << "Put your password" << endl;
                     cin >> password_new;
                         cout << "Repeat your new password" << endl;
                         cin >> passwd_rep;
@@ -907,7 +908,8 @@ int main()
 {
    
     ofstream file("example.csv");
-    file << "ADMIN";
+    char k[] = " ";
+    file << "ADMIN"<<","<<","<<"n"<<","<<"n";
     file.close();
     
     while (1)
@@ -939,6 +941,7 @@ int main()
             {
                 if (is_passwd(nameIn))
                 {
+                    cout << "is passwd";
                     if (password_in(nameIn) == true)
                     {
                         admin_menu();
@@ -946,6 +949,7 @@ int main()
                 }
                 else
                 {
+                    cout << "no passwd" << endl;
                     put_first_passwd(nameIn);
                     admin_menu();
 
