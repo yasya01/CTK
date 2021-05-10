@@ -9,6 +9,16 @@
 #include<iomanip>
 #include<regex>
 #include <cctype> 
+#include<Windows.h>
+#include<WinUser.h>
+#include <Lmcons.h>
+#include <functional>
+#include <Wincrypt.h> 
+#include<vector>
+#define MY_ENCODING_TYPE  (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
+using namespace std;
+#define INFO_BUFFER_SIZE 32767
+#define UNLEN 256
 #define NULL 0
 using namespace std;
 
@@ -902,6 +912,92 @@ void read_file()
     }
     file.close();
 }
+void computerInfo()
+{
+    TCHAR username[UNLEN + 1];
+    DWORD size = UNLEN + 1;
+    if (GetUserName((TCHAR*)username, &size))
+        wcout << L"User name: " << username << L"\n";
+    wstring name = username;
+    hash <wstring> h;
+    h(name);
+    TCHAR  infoBuf[INFO_BUFFER_SIZE];
+    DWORD  bufCharCount = INFO_BUFFER_SIZE;
+    if (GetComputerName(infoBuf, &bufCharCount))
+        wcout << L"Computer name: " << infoBuf << endl;
+    wstring cname = infoBuf;
+    h(cname);
+    wchar_t path[MAX_PATH];
+    GetWindowsDirectory(path, MAX_PATH);
+    wstring path1 = path;
+    GetSystemDirectory(path, MAX_PATH);
+    wstring path2 = path;
+    int keyboard_type = GetKeyboardType(0);
+    int keyboard_buttons = GetKeyboardType(2);
+    int keyboard_subtype = GetKeyboardType(1); 
+    int nIndex = SM_CXSCREEN;
+    hash <int> h1;
+    MEMORYSTATUS stat;
+    stat.dwLength = sizeof(stat);
+    GlobalMemoryStatus(&stat);
+    DWORD nsc, nbs, nfc, ncu;
+    DWORD64 nf1;
+    double nf;
+    GetDiskFreeSpace(L"c:\\", &nsc, &nbs, &nfc, &ncu);
+    nf1 = (DWORD64)nfc * (DWORD64)nsc * (DWORD64)nbs;
+    nf = (double)nfc * (double)nsc * (double)nbs;
+    nf = nf / 1024.0 / 1024;
+    ofstream file;
+    file.open("data.txt");
+    file << h(name) << h(cname) << h(path1) << h(path2) << h1(keyboard_type) << h1(keyboard_subtype) << h1(GetSystemMetrics(nIndex)) << h1((size_t)stat.dwTotalPhys) << h1(nf1) << h1(nf);
+
+}
+
+bool check_sign()
+{
+    HCRYPTPROV hProv;
+    BYTE* pbBuffer = (BYTE*)"28274873903423424879226167186315368679591827780651268118805352621397116624417771527245903808446037";// data.txt
+    DWORD dwBufferLen = strlen((char*)pbBuffer) + 1;
+    HCRYPTHASH hHash;
+    HCRYPTKEY hKey;
+    HCRYPTKEY hPubKey;
+    BYTE* pbKeyBlob;
+    BYTE* pbSignature;
+    DWORD dwSigLen;
+    DWORD dwBlobLen;
+
+
+    if (CryptImportKey(hProv, pbKeyBlob, dwBlobLen, 0, 0, &hPubKey))
+    {
+        printf("The key has been imported.\n");
+    }
+
+    if (CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
+    {
+        printf("The hash object has been recreated. \n");
+    }
+
+
+    if (CryptHashData(hHash, pbBuffer, dwBufferLen, 0))
+    {
+        cout << "The new hash has been created.\n";
+    }
+    else
+        if (CryptVerifySignature(hHash, pbSignature, dwSigLen, hPubKey, NULL, 0))
+        {
+            cout << "The signature has been verified.\n";
+            return true;
+        }
+        else
+        {
+            cout << "Signature not validated!\n";
+            return false;
+        }
+
+}
+
+
+
 
 
 int main()
@@ -911,101 +1007,105 @@ int main()
     char k[] = " ";
     file << "ADMIN"<<","<<","<<"n"<<","<<"n";
     file.close();
-    
-    while (1)
+    if (check_sign())
     {
-        int opt;
-
-        cout << "----------------------------|" << endl;
-        cout << "     Menu   " << endl;
-        cout << "----------------------------|" << endl;
-        cout << "1. LogIn as ADMIN" << endl;
-        cout << "----------------------------|" << endl;
-        cout << "2. LogIn as USER" << endl;
-        cout << "----------------------------|" << endl;
-        cout << "3. Program info " << endl;
-        cout << "----------------------------|" << endl;
-        cout << "4. Exit" << endl;
-        cout << "----------------------------|" << endl;
-
-        cin >> opt;
-        cout << "\n" << endl;
-
-        switch (opt)
+        while (1)
         {
-        case 1:
-        {
-            string nameIn = login();
-            
-            if (nameIn == "ADMIN")
+            int opt;
+
+            cout << "----------------------------|" << endl;
+            cout << "     Menu   " << endl;
+            cout << "----------------------------|" << endl;
+            cout << "1. LogIn as ADMIN" << endl;
+            cout << "----------------------------|" << endl;
+            cout << "2. LogIn as USER" << endl;
+            cout << "----------------------------|" << endl;
+            cout << "3. Program info " << endl;
+            cout << "----------------------------|" << endl;
+            cout << "4. Exit" << endl;
+            cout << "----------------------------|" << endl;
+
+            cin >> opt;
+            cout << "\n" << endl;
+
+            switch (opt)
             {
-                if (is_passwd(nameIn))
+            case 1:
+            {
+                string nameIn = login();
+
+                if (nameIn == "ADMIN")
                 {
-                    cout << "is passwd";
-                    if (password_in(nameIn) == true)
+                    if (is_passwd(nameIn))
                     {
+                        //cout << "is passwd";
+                        if (password_in(nameIn) == true)
+                        {
+                            admin_menu();
+                        }
+                    }
+                    else
+                    {
+                        cout << "no passwd" << endl;
+                        put_first_passwd(nameIn);
                         admin_menu();
+
                     }
                 }
-                else
-                {
-                    cout << "no passwd" << endl;
-                    put_first_passwd(nameIn);
-                    admin_menu();
-
-                }
+                break;
             }
-            break;
-        }
-        case 2:
-        {
-            string nameIn = login();
-            if (nameIn != "ADMIN")
+            case 2:
             {
-                if (is_user(nameIn))
+                string nameIn = login();
+                if (nameIn != "ADMIN")
                 {
-                    if (check_bl(nameIn) == true)
-                        cout << "you are blocked" << endl;
-                    if (check_bl(nameIn) == false)
+                    if (is_user(nameIn))
                     {
-                        if (is_passwd(nameIn))
+                        if (check_bl(nameIn) == true)
+                            cout << "you are blocked" << endl;
+                        if (check_bl(nameIn) == false)
                         {
-                            for (int i = 0; i < 3; i++)
+                            if (is_passwd(nameIn))
                             {
-                                if (password_in(nameIn) == true)
+                                for (int i = 0; i < 3; i++)
                                 {
-                                    user_menu(nameIn);
-                                    break;
+                                    if (password_in(nameIn) == true)
+                                    {
+                                        user_menu(nameIn);
+                                        break;
+                                    }
                                 }
-                            }
-                             
-                        }
-                        else
-                        {
-                           // cout << "FIRST" << endl;
-                            put_first_passwd(nameIn);
-                            user_menu(nameIn);
 
+                            }
+                            else
+                            {
+                                // cout << "FIRST" << endl;
+                                put_first_passwd(nameIn);
+                                user_menu(nameIn);
+
+                            }
                         }
                     }
+                    else
+                        cout << "no user with this name in database" << endl;
                 }
-                else
-                    cout << "no user with this name in database" << endl;
+                break;
             }
-            break;
-        }    
-        case 3:
-        {
-            read_file();
-            break;
-        }
-        case 4:
-            exit(1);
-        default:
-            break;
-        }
+            case 3:
+            {
+                read_file();
+                break;
+            }
+            case 4:
+                exit(1);
+            default:
+                break;
+            }
 
+        }
     }
+    else
+        exit(1);
     return 0;
 }
 
