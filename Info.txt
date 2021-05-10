@@ -1,3 +1,0 @@
-Program Info
-Developed by Bondarchuk Yaroslava FB-83
-Variant 4 : The password must contain Latin letters and Cyrillic characters
