@@ -1,0 +1,152 @@
+import time
+import keyboard
+import scipy.stats
+import numpy as np
+import pandas as pd
+
+huge_w_time = []
+
+key_phrase = ''
+
+def key_read(key_phrase):
+    down_time = []
+    up_time = []
+    key_ph = ''
+    for i in range(len(key_phrase)):
+        a = keyboard.read_event()  # Reading the keyqwerty
+        # if a.name == "enter":break      #Loop will break on pressing esc, you can remove that
+        if a.event_type == "down":  # If any button is pressed (Not talking about released) then wait for it to be released
+            key_ph += a.name
+            t = time.time()  # Getting time in sec
+            down_time.append(t)
+            b = keyboard.read_event()
+            while not b.event_type == "up" and b.name == a.name:  # Loop till the key event doesn't matches the old one
+                b = keyboard.read_event()
+            up = time.time()
+            up_time.append(up)
+    return down_time, up_time, key_ph
+
+
+def w_key(down_time, up_time):
+    w_time = []
+    down_time.pop(0)
+    up_time.pop(len(up_time) - 1)
+    for i in range(len(up_time)):
+        w = down_time[i] - up_time[i]
+        w_time.append(w)
+    huge_w_time.append(w_time)
+    return huge_w_time
+
+
+
+def sign_in(name):
+    key_phrase = input('Put your keyphrase: ')
+    print('Please repeat your phrase: ')
+    a, b, key_t = key_read(key_phrase)
+    Fisher(w_key(a, b))
+
+def Fisher(huge_w_time):
+    time_average = []
+    for i in huge_w_time:
+        t = average_list(i)
+        time_average.append(t)
+    time_average_seq = []
+    for time in time_average:
+        time = time ** 2
+        time_average_seq.append(time)
+    s_max = max(time_average_seq)
+    s_min = min(time_average_seq)
+    Fp = s_max / s_min
+    Ft = abs(scipy.stats.t.ppf(0.05, len(time_average) - 1))
+    if Fp > Ft:
+        print("You are not autentificated")
+        exit(0)
+    else:
+        print("You are autentificated")
+def check_n(name):
+    cols = [0]
+    data = pd.read_excel('data.xlsx', usecols=cols)
+    for line in data:
+        if line == name:
+            print('User exists.')
+            return True
+    return False
+
+
+def student_coef(huge_w_time):
+    new_w_time = []
+    for arr in huge_w_time:
+        list = []
+        tt = abs(scipy.stats.t.ppf(0.05, len(arr) - 1))
+        for i in range(len(arr)):
+            temp_arr = []
+            for j in arr:
+                temp_arr.append(j)
+            yi = temp_arr.pop(i)
+            sum = 0
+            for value in temp_arr:
+                sum = sum + float(value)
+            math_exp = sum / len(temp_arr)
+            dispersion = np.var(temp_arr)
+            tp = abs((yi - math_exp) / dispersion)
+
+            print('tp', tp)
+            if tp <= tt:
+                list.append(arr[i])
+        new_w_time.append(list)
+    return new_w_time
+
+
+def average_list(list):
+    time_sum = 0.0
+    for time_wait in list:
+        time_sum += float(str(time_wait))
+    time_average = time_sum / len(list)
+    return time_average
+
+
+def registration(name):
+    global key_phrase
+    key_phrase = input('Put your keyphrase: ')
+    print('Please repeat your phrase 5 times: ')
+    i = 0
+    while i != 5:
+        a, b, key_t = key_read(key_phrase)
+        if key_t == key_phrase:
+            i = i + 1
+            w_key(a, b)
+            print('\n')
+        else:
+            print('false key phrase')
+    new_w_time = []
+    w_time = student_coef(huge_w_time)
+    for arr in w_time:
+        a = average_list(arr)
+        new_w_time.append(a)
+    average_time = average_list(new_w_time)
+    df = pd.DataFrame({'Name': [name], 'Phrase': [key_phrase],
+                       'Value': [average_time]})
+    df.to_excel('data.xlsx')
+
+if __name__ == '__main__':
+
+    print('hey!) Choose format: \n 1.LogIn \n 2.SignUp')
+    d = input()
+
+    if d == '1':
+        print('Put your name: ')
+        name = input()
+        if check_n(name) == False:
+            print("U aren't registreted")
+            registration(name)
+        else:
+            ph = input('Put your phrase:')
+    elif d == '2':
+        print('Put your name: ')
+        name = input()
+        if check_n(name) == False:
+            registration(name)
+        else:
+            sign_in(name)
+    else:
+        print("False input")
